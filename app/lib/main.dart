@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:app/product.dart';
 import 'package:app/record_web_service.dart';
 import 'package:cross_file/cross_file.dart';
 import 'package:flutter/foundation.dart';
@@ -18,7 +19,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'AI Groceries',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
@@ -41,7 +42,18 @@ enum ViewState {
         return "Loading...";
       case ViewState.recording:
         return "Recording...";
-    } 
+    }
+  }
+
+  Icon getFabIcon() {
+    switch (this) {
+      case ViewState.idle:
+        return const Icon(Icons.record_voice_over_rounded);
+      case ViewState.loading:
+        return const Icon(Icons.record_voice_over_rounded);
+      case ViewState.recording:
+        return const Icon(Icons.stop);
+    }
   }
 }
 
@@ -56,9 +68,10 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   final record = AudioRecorder();
-  final webService = RecordWebService("https://ai-grocery-sorter.fly.dev/upload-audio");
+  final webService =
+      RecordWebService("https://ai-grocery-sorter.fly.dev/upload-audio");
   var state = ViewState.idle;
-  String? fetchedProducts = null;
+  List<Product>? fetchedProducts;
 
   void _startRecording() async {
     if (!await record.hasPermission()) {
@@ -66,32 +79,39 @@ class _MyHomePageState extends State<MyHomePage> {
       return;
     }
     var config = const RecordConfig(encoder: AudioEncoder.wav);
-    await record.start(config, path: "test.m4a");    
+    await record.start(config, path: "test.m4a");
     setState(() {
       state = ViewState.recording;
     });
   }
 
   void _stopRecording() async {
-      var path = await record.stop();
-      if (path == null) {
-        // TODO: Show an error
-        print("No path present!");
-        setState(() {
-          state = ViewState.idle;
-        });
-        return;
-      }
-      var buffer = await XFile(path).readAsBytes();
-      setState(() {
-        state = ViewState.loading;
-      });
-      var products = await webService.uploadAudioFile(buffer, "recording.wav");
-      await record.dispose();
+    var path = await record.stop();
+    if (path == null) {
+      // TODO: Show an error
+      print("No path present!");
       setState(() {
         state = ViewState.idle;
+      });
+      return;
+    }
+    var buffer = await XFile(path).readAsBytes();
+    setState(() {
+      state = ViewState.loading;
+    });
+    try {
+      var products = await webService.uploadAudioFile(buffer, "recording.wav");
+      setState(() {
         fetchedProducts = products;
       });
+    } catch (error) {
+      print(error);
+    } finally {
+      await record.dispose();
+    }
+    setState(() {
+      state = ViewState.idle;
+    });
   }
 
   void _toggleRecording() async {
@@ -114,14 +134,16 @@ class _MyHomePageState extends State<MyHomePage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             Text(state.getMessage()),
-            fetchedProducts != null ? Text(fetchedProducts!) : Container()
+            fetchedProducts != null
+                ? Text(fetchedProducts!.toString())
+                : Container()
           ],
         ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _toggleRecording,
-        tooltip: 'Start recording',
-        child: const Icon(Icons.record_voice_over_sharp),
+        tooltip: 'Toggle recording',
+        child: state.getFabIcon(),
       ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
