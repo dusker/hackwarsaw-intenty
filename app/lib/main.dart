@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:app/product.dart';
+import 'package:app/products_list.dart';
 import 'package:app/record_web_service.dart';
 import 'package:cross_file/cross_file.dart';
 import 'package:flutter/foundation.dart';
@@ -78,6 +79,9 @@ class _MyHomePageState extends State<MyHomePage> {
       // TODO: Show an error
       return;
     }
+    setState(() {
+      fetchedProducts = null;
+    });
     var config = const RecordConfig(encoder: AudioEncoder.wav);
     await record.start(config, path: "test.m4a");
     setState(() {
@@ -101,13 +105,12 @@ class _MyHomePageState extends State<MyHomePage> {
     });
     try {
       var products = await webService.uploadAudioFile(buffer, "recording.wav");
+      print("did fetch products: $products");
       setState(() {
         fetchedProducts = products;
       });
     } catch (error) {
       print(error);
-    } finally {
-      await record.dispose();
     }
     setState(() {
       state = ViewState.idle;
@@ -134,8 +137,8 @@ class _MyHomePageState extends State<MyHomePage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             Text(state.getMessage()),
-            fetchedProducts != null
-                ? Text(fetchedProducts!.toString())
+            fetchedProducts != null && fetchedProducts!.isNotEmpty
+                ? Expanded(child: ProductsList(products: fetchedProducts!))
                 : Container()
           ],
         ),
