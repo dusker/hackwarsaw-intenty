@@ -82,7 +82,7 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       fetchedProducts = null;
     });
-    var config = const RecordConfig(encoder: AudioEncoder.wav);
+    var config = const RecordConfig(encoder: AudioEncoder.aacLc);
     await record.start(config, path: "test.m4a");
     setState(() {
       state = ViewState.recording;

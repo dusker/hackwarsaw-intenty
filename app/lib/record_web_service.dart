@@ -10,6 +10,7 @@ class RecordWebService {
   RecordWebService(this.uploadUrl);
   Future<List<Product>> uploadAudioFile(Uint8List audioData, String fileName) async {
     var request = http.MultipartRequest('POST', Uri.parse(uploadUrl));
+    print('sending request to $uploadUrl');
     request.files.add(http.MultipartFile.fromBytes(
       'audio',
       audioData,
@@ -20,6 +21,6 @@ class RecordWebService {
     var productsJson = json['products'] as List<dynamic>;
     return productsJson
         .map((productJson) => Product.fromJson(productJson))
-        .toList();      
+        .toList();
   }
 }

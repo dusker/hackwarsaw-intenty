@@ -48,9 +48,11 @@ app.post('/upload-audio', upload.single('audio'), async (req, res) => {
   
   if (!req.file) {
     const error = {message: 'No audio file uploaded'};
+    console.log('No audio file');
     sendError(res, error);
     return;      
   }
+  console.log('Received file with length '+ req.file.size);
   const filePath = req.file.path;
   console.log(`Will extract products from file at ${filePath}`);  
   try {    
@@ -60,6 +62,7 @@ app.post('/upload-audio', upload.single('audio'), async (req, res) => {
     console.log(`Products: ${products}`);
     res.send({success: true, products: JSON.parse(products)});
   } catch(error) {
+    console.log('Product extraction failed: ' + JSON.stringify(error));
     sendError(res, error);
   }
 });
