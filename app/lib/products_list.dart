@@ -12,6 +12,7 @@ class ProductsList extends StatelessWidget {
       itemCount: products.length,
       itemBuilder: (context, index) {
         final product = products[index];
+        final daysUntilExpiration = product.expirationDate.difference(DateTime.now()).inDays;
         return ListTile(
           leading: Text(
             product.emoji,
@@ -19,6 +20,7 @@ class ProductsList extends StatelessWidget {
           ),
           title: Text(product.name),
           subtitle: Text('Expires on: ${product.expirationDate.toLocal()}'),
+          tileColor: daysUntilExpiration < 3 ? Colors.red : null,
         );
       },
     );
