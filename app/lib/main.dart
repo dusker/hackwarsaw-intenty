@@ -1,4 +1,8 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:record/record.dart';
 
 void main() {
   runApp(const MyApp());
@@ -21,6 +25,11 @@ class MyApp extends StatelessWidget {
   }
 }
 
+enum ViewState {
+  idle,
+  recording
+}
+
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
 
@@ -31,6 +40,37 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  final record = AudioRecorder();
+  var state = ViewState.idle;
+  Stream<Uint8List>? stream = null;
+
+  void _startRecording() async {
+    if (!await record.hasPermission()) {
+      // TODO: Show an error
+      return;
+    }
+    var config = const RecordConfig(encoder: AudioEncoder.wav);
+    await record.start(config, path: "test.m4a");
+    setState(() {
+      state = ViewState.recording;
+    });
+  }
+
+  void _stopRecording() async {
+          await record.stop();
+      await record.dispose();
+      setState(() {
+        state = ViewState.idle;
+      });
+  }
+
+  void _toggleRecording() async {
+    if (state == ViewState.idle) {
+      _startRecording();
+    } else {
+      _stopRecording();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,12 +83,12 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            Text("test")
+            state == ViewState.idle ? Text("Not recording") : Text("Recording...")
           ],
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () { },
+        onPressed: _toggleRecording,
         tooltip: 'Start recording',
         child: const Icon(Icons.record_voice_over_sharp),
       ), // This trailing comma makes auto-formatting nicer for build methods.
