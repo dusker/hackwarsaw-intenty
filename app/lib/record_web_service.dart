@@ -1,19 +1,27 @@
+import 'dart:typed_data';
+
 import 'package:http/http.dart' as http;
 
 class RecordWebService {
   final String uploadUrl;
 
   RecordWebService(this.uploadUrl);
-
-  Future<http.Response> uploadAudioFile(List<int> audioBytes, String filename) async {
+  Future<String?> uploadAudioFile(Uint8List audioData, String fileName) async {
     var request = http.MultipartRequest('POST', Uri.parse(uploadUrl));
     request.files.add(http.MultipartFile.fromBytes(
       'audio',
-      audioBytes,
-      filename: filename,
+      audioData,
+      filename: fileName,
     ));
 
-    var response = await request.send();
-    return await http.Response.fromStream(response);
+    try {
+      var response = await http.Response.fromStream(await request.send());
+      print(response.body);
+
+      return response.body;
+    } catch(error) {
+      print(error);
+      return null;
+    }
   }
 }

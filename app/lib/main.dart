@@ -1,5 +1,8 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:app/record_web_service.dart';
+import 'package:cross_file/cross_file.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:record/record.dart';
@@ -27,7 +30,19 @@ class MyApp extends StatelessWidget {
 
 enum ViewState {
   idle,
-  recording
+  loading,
+  recording;
+
+  String getMessage() {
+    switch (this) {
+      case ViewState.idle:
+        return "Not recording";
+      case ViewState.loading:
+        return "Loading...";
+      case ViewState.recording:
+        return "Recording...";
+    } 
+  }
 }
 
 class MyHomePage extends StatefulWidget {
@@ -41,8 +56,9 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   final record = AudioRecorder();
+  final webService = RecordWebService("https://ai-grocery-sorter.fly.dev/upload-audio");
   var state = ViewState.idle;
-  Stream<Uint8List>? stream = null;
+  String? fetchedProducts = null;
 
   void _startRecording() async {
     if (!await record.hasPermission()) {
@@ -50,17 +66,31 @@ class _MyHomePageState extends State<MyHomePage> {
       return;
     }
     var config = const RecordConfig(encoder: AudioEncoder.wav);
-    await record.start(config, path: "test.m4a");
+    await record.start(config, path: "test.m4a");    
     setState(() {
       state = ViewState.recording;
     });
   }
 
   void _stopRecording() async {
-          await record.stop();
+      var path = await record.stop();
+      if (path == null) {
+        // TODO: Show an error
+        print("No path present!");
+        setState(() {
+          state = ViewState.idle;
+        });
+        return;
+      }
+      var buffer = await XFile(path).readAsBytes();
+      setState(() {
+        state = ViewState.loading;
+      });
+      var products = await webService.uploadAudioFile(buffer, "recording.wav");
       await record.dispose();
       setState(() {
         state = ViewState.idle;
+        fetchedProducts = products;
       });
   }
 
@@ -83,7 +113,8 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            state == ViewState.idle ? Text("Not recording") : Text("Recording...")
+            Text(state.getMessage()),
+            fetchedProducts != null ? Text(fetchedProducts!) : Container()
           ],
         ),
       ),
