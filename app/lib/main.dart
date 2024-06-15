@@ -1,13 +1,14 @@
-import 'dart:async';
-import 'dart:io';
+import 'dart:convert';
 
 import 'package:app/product.dart';
 import 'package:app/products_list.dart';
 import 'package:app/record_web_service.dart';
 import 'package:cross_file/cross_file.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:record/record.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+const KEY_PRODUCTS = "products";
 
 void main() {
   runApp(const MyApp());
@@ -27,7 +28,8 @@ class MyApp extends StatelessWidget {
       ),
       darkTheme: ThemeData(
         brightness: Brightness.dark,
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple, brightness: Brightness.dark),
+        colorScheme: ColorScheme.fromSeed(
+            seedColor: Colors.deepPurple, brightness: Brightness.dark),
         useMaterial3: true,
       ),
       themeMode: ThemeMode.system, // Use system theme mode (light/dark)
@@ -80,14 +82,29 @@ class _MyHomePageState extends State<MyHomePage> {
   var state = ViewState.idle;
   List<Product>? fetchedProducts;
 
+  @override
+  void initState() {
+    super.initState();
+    _loadStoredProducts();
+  }
+
+  void _loadStoredProducts() async {
+    final prefs = await SharedPreferences.getInstance();
+    final productsJson = prefs.getString(KEY_PRODUCTS);
+    if (productsJson != null) {
+      setState(() {
+        fetchedProducts = (jsonDecode(productsJson) as List<dynamic>)
+            .map((productJson) => Product.fromJson(productJson))
+            .toList();
+      });
+    }
+  }
+
   void _startRecording() async {
     if (!await record.hasPermission()) {
       // TODO: Show an error
       return;
     }
-    setState(() {
-      fetchedProducts = null;
-    });
     var config = const RecordConfig(encoder: AudioEncoder.aacLc);
     await record.start(config, path: "test.m4a");
     setState(() {
@@ -112,8 +129,18 @@ class _MyHomePageState extends State<MyHomePage> {
     try {
       var products = await webService.uploadAudioFile(buffer, "recording.wav");
       print("did fetch products: $products");
-      setState(() {
-        fetchedProducts = products;
+      setState(() async {
+        if (fetchedProducts != null) {
+          fetchedProducts!.addAll(products);
+        } else {
+          fetchedProducts = products;
+        }
+
+        if (fetchedProducts != null && fetchedProducts!.isNotEmpty) {
+          final prefs = await SharedPreferences.getInstance();
+          var productsJson = jsonEncode(fetchedProducts);
+          prefs.setString(KEY_PRODUCTS, productsJson);
+        }
       });
     } catch (error) {
       print(error);
