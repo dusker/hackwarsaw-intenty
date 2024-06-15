@@ -9,6 +9,9 @@ import 'package:record/record.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 const KEY_PRODUCTS = "products";
+const emptyListMessage =
+    "Welcome to AI grocery sorter! Press the record button and tell me what products you purchased. Be sure to mention the expiration date!";
+const appName = "Kitchen Copilot";
 
 void main() {
   runApp(const MyApp());
@@ -21,7 +24,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'AI Groceries',
+      title: appName,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
@@ -33,7 +36,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       themeMode: ThemeMode.system, // Use system theme mode (light/dark)
-      home: const MyHomePage(title: 'AI grocery sorter'),
+      home: const MyHomePage(title: appName),
     );
   }
 }
@@ -63,6 +66,10 @@ enum ViewState {
       case ViewState.recording:
         return const Icon(Icons.stop);
     }
+  }
+
+  bool fabEnabled() {
+    return this == ViewState.idle || this == ViewState.recording;
   }
 }
 
@@ -161,26 +168,59 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text(state.getMessage()),
-            fetchedProducts != null && fetchedProducts!.isNotEmpty
-                ? Expanded(child: ProductsList(products: fetchedProducts!))
-                : Container()
-          ],
+        appBar: AppBar(
+          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+          title: Text(widget.title),
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _toggleRecording,
-        tooltip: 'Toggle recording',
-        child: state.getFabIcon(),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
-    );
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              Expanded(
+                  child: Row(
+                children: [
+                  Expanded(
+                    flex: 5,
+                    child:
+                        fetchedProducts != null && fetchedProducts!.isNotEmpty
+                            ? ProductsList(products: fetchedProducts!)
+                            : const Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text('🤖',
+                                      style: TextStyle(
+                                          fontSize: 40,
+                                          fontFamily: "EmojiOne")),
+                                  Text(emptyListMessage,
+                                      style: TextStyle(fontSize: 18))
+                                ],
+                              ),
+                  ),
+                  Container(
+                    width: 1,
+                    color: Colors.grey,
+                    margin: const EdgeInsets.symmetric(horizontal: 10),
+                  ),
+                  Expanded(
+                    flex: 5,
+                    child: Container(
+                      alignment: Alignment.center,
+                      child: const Text(
+                        'Additional Information',
+                        style: TextStyle(fontSize: 18),
+                      ),
+                    ),
+                  ),
+                ],
+              ))
+            ],
+          ),
+        ),
+        floatingActionButton: FloatingActionButton(
+            onPressed: state.fabEnabled() ? _toggleRecording : null,
+            tooltip: 'Toggle recording',
+            child: state == ViewState.loading
+                ? const CircularProgressIndicator()
+                : state.getFabIcon()));
   }
 }
